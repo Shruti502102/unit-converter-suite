@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Calibrate — Unit Converter Suite</title>
+<style>
+  :root{
+    --bg:#050813;
+    --panel:rgba(16,22,42,0.55);
+    --line:rgba(0,255,224,0.2);
+    --ink:#E4FBFA;
+    --teal:#00FFD4;
+    --teal-bright:#7CFFEA;
+    --amber:#FFC93C;
+    --purple:#8B5CFF;
+    --grid-line:rgba(0,255,224,0.08);
+    --dim:#7C90A8;
+    --font-display:"Orbitron", "Segoe UI", sans-serif;
+    --font-mono:"SFMono-Regular", Consolas, Menlo, monospace;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    margin:0;
+    color:var(--ink);
+    font-family:-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    min-height:100vh;
+    background:var(--bg);
+    position:relative;
+    overflow-x:hidden;
+  }
+  body::before{
+    content:''; position:fixed; inset:0; z-index:0; pointer-events:none;
+    background:
+      radial-gradient(580px circle at 18% 15%, rgba(0,255,212,0.14), transparent 60%),
+      radial-gradient(520px circle at 85% 20%, rgba(139,92,255,0.14), transparent 60%),
+      radial-gradient(680px circle at 50% 95%, rgba(255,201,60,0.08), transparent 60%),
+      var(--bg);
+    animation:driftGlow 19s ease-in-out infinite alternate;
+  }
+  body::after{
+    content:''; position:fixed; inset:0; z-index:0; pointer-events:none; opacity:0.5;
+    background-image:
+      linear-gradient(var(--grid-line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+    background-size:36px 36px;
+    mask-image:radial-gradient(circle at 50% 25%, black, transparent 78%);
+    animation:gridDrift 34s linear infinite;
+  }
+  @keyframes driftGlow{
+    0%{background-position:0% 0%, 100% 0%, 50% 100%, 0 0;}
+    100%{background-position:9% 9%, 91% 10%, 45% 90%, 0 0;}
+  }
+  @keyframes gridDrift{ from{background-position:0 0, 0 0;} to{background-position:100px 64px, 100px 64px;} }
+
+  .wrap{max-width:960px; margin:0 auto; padding:40px 20px 80px; position:relative; z-index:1;}
+  header{margin-bottom:32px;}
+  .eyebrow{
+    font-family:var(--font-mono); font-size:11px; letter-spacing:3px; text-transform:uppercase;
+    color:var(--purple); margin-bottom:6px;
+  }
+  h1{
+    font-family:var(--font-display); font-size:34px; margin:0; letter-spacing:1px; font-weight:900;
+    text-shadow:0 0 14px rgba(0,255,212,0.35), 0 0 30px rgba(0,255,212,0.18);
+    animation:pulseGlow 3.4s ease-in-out infinite;
+  }
+  @keyframes pulseGlow{
+    0%,100%{text-shadow:0 0 12px rgba(0,255,212,0.3), 0 0 26px rgba(0,255,212,0.15);}
+    50%{text-shadow:0 0 18px rgba(0,255,212,0.45), 0 0 40px rgba(0,255,212,0.3);}
+  }
+
+  .tabs{
+    display:flex; gap:8px; margin-bottom:28px; flex-wrap:wrap;
+  }
+  .tab{
+    padding:10px 18px; background:var(--panel); backdrop-filter:blur(10px); border:1px solid var(--line);
+    font-family:var(--font-mono); font-size:12px; letter-spacing:1px; text-transform:uppercase;
+    cursor:pointer; color:var(--dim); border-radius:10px;
+    transition:border-color 0.2s, color 0.2s, box-shadow 0.2s, transform 0.15s;
+  }
+  .tab:hover{color:var(--ink); border-color:var(--teal); transform:translateY(-1px);}
+  .tab.active{
+    background:linear-gradient(135deg, rgba(0,255,212,0.18), rgba(139,92,255,0.18));
+    color:var(--ink); border-color:var(--teal); box-shadow:0 0 18px rgba(0,255,212,0.18);
+  }
+
+  .panel{
+    background:var(--panel); backdrop-filter:blur(18px); border:1px solid var(--line); border-radius:16px; padding:32px;
+    box-shadow:0 10px 40px rgba(0,0,0,0.4);
+    animation:panelIn 0.5s cubic-bezier(0.16,1,0.3,1) both;
+  }
+  @keyframes panelIn{ from{opacity:0; transform:translateY(14px);} to{opacity:1; transform:translateY(0);} }
+  .converter{display:grid; grid-template-columns:1fr 60px 1fr; gap:20px; align-items:end;}
+  @media(max-width:600px){.converter{grid-template-columns:1fr;} .swap-btn{justify-self:center;}}
+
+  .col label{
+    display:block; font-family:var(--font-mono); font-size:10px; letter-spacing:1.5px;
+    text-transform:uppercase; color:var(--dim); margin-bottom:8px;
+  }
+  .col select{
+    width:100%; padding:10px 12px; border:1px solid var(--line); background:rgba(5,8,19,0.6);
+    font-family:inherit; font-size:14px; margin-bottom:12px; color:var(--ink); border-radius:8px;
+  }
+  .col input{
+    width:100%; padding:14px; border:1px solid var(--line); background:rgba(5,8,19,0.6);
+    font-family:var(--font-display); font-size:26px; color:var(--ink); border-radius:8px;
+    transition:border-color 0.2s, box-shadow 0.2s;
+  }
+  .col input:focus{outline:none; border-color:var(--teal); box-shadow:0 0 0 3px rgba(0,255,212,0.15);}
+  .col input[readonly]{
+    background:rgba(0,255,212,0.06); color:var(--teal-bright); text-shadow:0 0 12px rgba(0,255,212,0.3);
+    transition:text-shadow 0.3s;
+  }
+  .col input[readonly].pulse{animation:resultPulse 0.4s ease;}
+  @keyframes resultPulse{
+    0%{text-shadow:0 0 22px rgba(0,255,212,0.7);}
+    100%{text-shadow:0 0 12px rgba(0,255,212,0.3);}
+  }
+
+  .swap-btn{
+    width:46px; height:46px; border-radius:50%; border:1px solid var(--line); background:var(--panel);
+    backdrop-filter:blur(10px);
+    display:flex; align-items:center; justify-content:center; cursor:pointer; font-size:18px;
+    margin-bottom:14px; color:var(--ink);
+    transition:background 0.2s, transform 0.4s cubic-bezier(0.34,1.56,0.64,1), border-color 0.2s, box-shadow 0.2s;
+  }
+  .swap-btn:hover{background:linear-gradient(135deg, var(--teal), var(--purple)); color:#04120F; border-color:var(--teal); box-shadow:0 0 20px rgba(0,255,212,0.3);}
+  .swap-btn.spin{transform:rotate(180deg);}
+
+  .quick-ref{margin-top:28px; padding-top:20px; border-top:1px solid var(--line);}
+  .quick-ref .label{font-family:var(--font-mono); font-size:10px; letter-spacing:1.5px; text-transform:uppercase; color:var(--dim); margin-bottom:10px;}
+  .chips{display:flex; flex-wrap:wrap; gap:8px;}
+  .chip{
+    font-family:var(--font-mono); font-size:11px; padding:7px 11px; background:rgba(0,255,212,0.05);
+    border:1px solid var(--line); color:var(--teal-bright); border-radius:8px;
+    animation:fadeInUp 0.35s ease both;
+    transition:border-color 0.2s, box-shadow 0.2s;
+  }
+  .chip:hover{border-color:var(--teal); box-shadow:0 0 12px rgba(0,255,212,0.15);}
+
+  .warn-note{
+    margin-top:10px; font-family:var(--font-mono); font-size:11px; color:var(--amber);
+    display:none; align-items:center; gap:6px;
+  }
+  .warn-note.show{display:flex; animation:fadeInUp 0.3s ease;}
+
+  @keyframes fadeInUp{ from{opacity:0; transform:translateY(8px);} to{opacity:1; transform:translateY(0);} }
+
+  ::-webkit-scrollbar{width:8px; height:8px;}
+  ::-webkit-scrollbar-track{background:transparent;}
+  ::-webkit-scrollbar-thumb{background:var(--line); border-radius:8px;}
+  ::-webkit-scrollbar-thumb:hover{background:var(--teal);}
+
+  @media (prefers-reduced-motion: reduce){
+    *{animation-duration:0.001ms !important; animation-iteration-count:1 !important; transition-duration:0.001ms !important;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="eyebrow">Precision Conversion Toolkit</div>
+    <h1>Calibrate</h1>
+  </header>
+
+  <div class="tabs" id="tabs"></div>
+
+  <div class="panel">
+    <div class="converter">
+      <div class="col">
+        <label>From</label>
+        <select id="fromUnit"></select>
+        <input id="fromVal" type="number" value="1">
+      </div>
+      <button class="swap-btn" id="swapBtn" title="Swap">⇄</button>
+      <div class="col">
+        <label>To</label>
+        <select id="toUnit"></select>
+        <input id="toVal" type="text" readonly>
+      </div>
+    </div>
+
+    <div class="quick-ref">
+      <div class="label">Quick Reference</div>
+      <div class="chips" id="quickRef"></div>
+    </div>
+    <div class="warn-note" id="warnNote">⚠ <span id="warnText"></span></div>
+  </div>
+</div>
+
+<script>
+  /* =========================================================================
+     UNIT CONVERTER SUITE
+     -------------------------------------------------------------------------
+     Data model: each category (length, weight, etc.) stores a "base unit"
+     and a set of units. Every unit knows how to convert itself TO the base
+     unit and FROM the base unit. To convert A -> B, we always go through
+     the base unit: value -> base -> target. This means we only need 2
+     formulas per unit instead of a formula for every possible pair.
+     ========================================================================= */
+  const categories = {
+    length: {
+      label: 'Length',
+      base: 'm', // meters is the base unit for this category
+      allowNegative: false, // a negative length isn't physically meaningful
+      units: {
+        m: {label:'Meters', toBase: v=>v, fromBase: v=>v},
+        km: {label:'Kilometers', toBase: v=>v*1000, fromBase: v=>v/1000},
+        cm: {label:'Centimeters', toBase: v=>v/100, fromBase: v=>v*100},
+        mm: {label:'Millimeters', toBase: v=>v/1000, fromBase: v=>v*1000},
+        mi: {label:'Miles', toBase: v=>v*1609.344, fromBase: v=>v/1609.344},
+        yd: {label:'Yards', toBase: v=>v*0.9144, fromBase: v=>v/0.9144},
+        ft: {label:'Feet', toBase: v=>v*0.3048, fromBase: v=>v/0.3048},
+        in: {label:'Inches', toBase: v=>v*0.0254, fromBase: v=>v/0.0254},
+      }
+    },
+    weight: {
+      label: 'Weight',
+      base: 'kg',
+      allowNegative: false, // a negative mass isn't physically meaningful
+      units: {
+        kg: {label:'Kilograms', toBase: v=>v, fromBase: v=>v},
+        g: {label:'Grams', toBase: v=>v/1000, fromBase: v=>v*1000},
+        mg: {label:'Milligrams', toBase: v=>v/1e6, fromBase: v=>v*1e6},
+        lb: {label:'Pounds', toBase: v=>v*0.45359237, fromBase: v=>v/0.45359237},
+        oz: {label:'Ounces', toBase: v=>v*0.028349523125, fromBase: v=>v/0.028349523125},
+        ton: {label:'Metric Tons', toBase: v=>v*1000, fromBase: v=>v/1000},
+      }
+    },
+    temperature: {
+      label: 'Temperature',
+      base: 'c', // Celsius is the base; conversions here are NOT simple multiplication
+      allowNegative: true, // negative Celsius/Fahrenheit are normal; only checked against absolute zero below
+      units: {
+        c: {label:'Celsius', toBase: v=>v, fromBase: v=>v},
+        f: {label:'Fahrenheit', toBase: v=>(v-32)*5/9, fromBase: v=>v*9/5+32},
+        k: {label:'Kelvin', toBase: v=>v-273.15, fromBase: v=>v+273.15},
+      }
+    },
+    volume: {
+      label: 'Volume',
+      base: 'l',
+      allowNegative: false,
+      units: {
+        l: {label:'Liters', toBase: v=>v, fromBase: v=>v},
+        ml: {label:'Milliliters', toBase: v=>v/1000, fromBase: v=>v*1000},
+        gal: {label:'Gallons (US)', toBase: v=>v*3.785411784, fromBase: v=>v/3.785411784},
+        qt: {label:'Quarts (US)', toBase: v=>v*0.946352946, fromBase: v=>v/0.946352946},
+        cup: {label:'Cups (US)', toBase: v=>v*0.2365882365, fromBase: v=>v/0.2365882365},
+        floz: {label:'Fluid Oz (US)', toBase: v=>v*0.0295735296, fromBase: v=>v/0.0295735296},
+      }
+    },
+    speed: {
+      label: 'Speed',
+      base: 'ms',
+      allowNegative: false, // treating speed as a scalar magnitude, not a signed velocity
+      units: {
+        ms: {label:'Meters/sec', toBase: v=>v, fromBase: v=>v},
+        kmh: {label:'Km/hour', toBase: v=>v/3.6, fromBase: v=>v*3.6},
+        mph: {label:'Miles/hour', toBase: v=>v*0.44704, fromBase: v=>v/0.44704},
+        knot: {label:'Knots', toBase: v=>v*0.514444, fromBase: v=>v/0.514444},
+      }
+    },
+    data: {
+      label: 'Data',
+      base: 'b', // bytes; using 1024-based (binary) conversions, not 1000-based
+      allowNegative: false,
+      units: {
+        b: {label:'Bytes', toBase: v=>v, fromBase: v=>v},
+        kb: {label:'Kilobytes', toBase: v=>v*1024, fromBase: v=>v/1024},
+        mb: {label:'Megabytes', toBase: v=>v*1024**2, fromBase: v=>v/1024**2},
+        gb: {label:'Gigabytes', toBase: v=>v*1024**3, fromBase: v=>v/1024**3},
+        tb: {label:'Terabytes', toBase: v=>v*1024**4, fromBase: v=>v/1024**4},
+      }
+    }
+  };
+
+  let activeCat = 'length'; // currently selected category tab
+  const tabsEl = document.getElementById('tabs');
+  const fromUnitEl = document.getElementById('fromUnit');
+  const toUnitEl = document.getElementById('toUnit');
+  const fromValEl = document.getElementById('fromVal');
+  const toValEl = document.getElementById('toVal');
+  const quickRefEl = document.getElementById('quickRef');
+  const warnNoteEl = document.getElementById('warnNote');
+  const warnTextEl = document.getElementById('warnText');
+  const ABSOLUTE_ZERO_C = -273.15;
+
+  // Render one tab button per category.
+  tabsEl.innerHTML = Object.entries(categories).map(([key,cat])=>
+    `<div class="tab ${key===activeCat?'active':''}" data-cat="${key}">${cat.label}</div>`
+  ).join('');
+
+  // Switching categories repopulates the unit dropdowns and re-converts.
+  tabsEl.querySelectorAll('.tab').forEach(tab=>{
+    tab.addEventListener('click', ()=>{
+      activeCat = tab.dataset.cat;
+      tabsEl.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+      tab.classList.add('active');
+      hideWarning();
+      populateUnits();
+      convert();
+    });
+  });
+
+  // Fills the "from"/"to" dropdowns with the units for the active category.
+  function populateUnits(){
+    const cat = categories[activeCat];
+    const keys = Object.keys(cat.units);
+    fromUnitEl.innerHTML = keys.map(k=>`<option value="${k}">${cat.units[k].label}</option>`).join('');
+    toUnitEl.innerHTML = keys.map(k=>`<option value="${k}">${cat.units[k].label}</option>`).join('');
+    toUnitEl.selectedIndex = keys.length > 1 ? 1 : 0; // default "to" to the 2nd unit, not the same as "from"
+    renderQuickRef();
+  }
+
+  function showWarning(msg){
+    warnTextEl.textContent = msg;
+    warnNoteEl.classList.add('show');
+  }
+  function hideWarning(){
+    warnNoteEl.classList.remove('show');
+  }
+
+  // Reads the "from" value + units, converts through the base unit, and
+  // writes the formatted result into the read-only "to" field.
+  // Also validates the value is physically meaningful for the category
+  // (e.g. rejects temperatures below absolute zero, negative lengths/weights).
+  function convert(){
+    const cat = categories[activeCat];
+    const fromU = cat.units[fromUnitEl.value];
+    const toU = cat.units[toUnitEl.value];
+    const val = parseFloat(fromValEl.value);
+    if(isNaN(val)){ toValEl.value = ''; hideWarning(); return; }
+
+    const baseVal = fromU.toBase(val);   // step 1: source unit -> base unit
+
+    if(activeCat === 'temperature'){
+      if(baseVal < ABSOLUTE_ZERO_C - 1e-6){
+        showWarning('That\'s below absolute zero (-273.15°C) — not a physically possible temperature.');
+      } else {
+        hideWarning();
+      }
+    } else if(!cat.allowNegative && val < 0){
+      showWarning(`Negative ${cat.label.toLowerCase()} isn't physically meaningful — showing the magnitude anyway.`);
+    } else {
+      hideWarning();
+    }
+
+    const result = toU.fromBase(baseVal); // step 2: base unit -> target unit
+    toValEl.value = formatNum(result);
+
+    // Small "pulse" flash on the result field so a change is visually obvious,
+    // even when the numeric value only shifts slightly.
+    toValEl.classList.remove('pulse');
+    void toValEl.offsetWidth; // restart animation
+    toValEl.classList.add('pulse');
+  }
+
+  // Keeps very large/small numbers readable (scientific notation) and trims
+  // trailing zeros for everyday values.
+  function formatNum(n){
+    if(Math.abs(n) >= 1e9 || (Math.abs(n) < 1e-6 && n !== 0)) return n.toExponential(4);
+    return parseFloat(n.toFixed(6)).toString();
+  }
+
+  // Builds the "1 X = Y Z" cheat-sheet chips shown under the converter,
+  // always expressed relative to the category's base unit.
+  function renderQuickRef(){
+    const cat = categories[activeCat];
+    const keys = Object.keys(cat.units);
+    const base = keys[0];
+    const refs = keys.slice(1,5).map(k=>{
+      const oneInBase = cat.units[k].toBase(1);
+      const converted = cat.units[base].fromBase(oneInBase);
+      return `1 ${cat.units[k].label} = ${formatNum(converted)} ${cat.units[base].label}`;
+    });
+    quickRefEl.innerHTML = refs.map(r=>`<div class="chip">${r}</div>`).join('');
+  }
+
+  // Swaps the "from" and "to" units in place, then re-converts. The button
+  // does a quick 180° spin so the action feels tactile rather than instant.
+  const swapBtnEl = document.getElementById('swapBtn');
+  swapBtnEl.addEventListener('click', ()=>{
+    const f = fromUnitEl.value, t = toUnitEl.value;
+    fromUnitEl.value = t; toUnitEl.value = f;
+    swapBtnEl.classList.toggle('spin');
+    convert();
+  });
+
+  fromValEl.addEventListener('input', convert);
+  fromUnitEl.addEventListener('change', convert);
+  toUnitEl.addEventListener('change', convert);
+
+  // Initial render on page load.
+  populateUnits();
+  convert();
+</script>
+</body>
+</html>
